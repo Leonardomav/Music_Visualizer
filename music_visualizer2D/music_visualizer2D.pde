@@ -9,55 +9,31 @@ Minim minim;
 AudioPlayer player;
 FFT fft;
 AnchorList anchorlist;
-float rotation =0;
 int sensibility = 2;
-
-
+boolean anchor_flag = false;
 
 void setup() {
   //size(1920, 1080);
   fullScreen(P3D);
   anchorlist = new AnchorList();
+  
   for(int i = 0; i < 25; i = i+1) 
     anchorlist.add_anchor(new Anchor(random(0,width),random(0,height)));
     
   minim = new Minim(this);
-  player = minim.loadFile("MusicsExample/music5.mp3", 1024);
+  player = minim.loadFile("../music_examples/music1.mp3", 1024);
   fft = new FFT( player.bufferSize(), player.sampleRate() );
   fft.linAverages( 30 );
   player.play();
-  rotation = 0;
 }
 
 void draw() {
   fft.forward( player.mix );
   background(55,1,58);
-  lights();
   anchorlist.run();
-
-  /*stroke(255, 0, 0);
-  line(0, 0, 0, 1000, 0, 0);
-  stroke(0, 255, 0);
-  line(0, 0, 0, 0, 1000, 0);
-  stroke(0, 0, 255);
-  line(0, 0, 0, 0, 0, 1000);*/
-  
-
-
-  float xpos= (width/2)+mouseX-(width/2);
-  float ypos= height/2;
-  float zpos=1250;
-  camera(xpos, ypos, zpos, width/2, height/2,0, 0, 1, 0);
-  rotateX(radians(180));
-  rotation++;
-  
-
-  
 }
 
-
 void keyPressed() {
-  
   if (key == CODED) {
     if (keyCode == UP) {
       sensibility++;
@@ -65,12 +41,18 @@ void keyPressed() {
       sensibility--;
     }
   }
+  if(key == 'p' || key == 'P'){
+    if(anchor_flag){
+      anchor_flag = false;
+    }else{
+      anchor_flag = true;
+    }
+  }
 }
 
 void mousePressed() {
   anchorlist.add_anchor(new Anchor(mouseX,mouseY));
 }
-
 
 
 class AnchorList {
@@ -89,85 +71,60 @@ class AnchorList {
   void add_anchor(Anchor a) {
     anchors.add(a);
   }
-
 }
 
 class Anchor{
   PVector position;
-  float size;
-  float atract_r;
-  float repulsion_r;
-  ArrayList<Anchor> anchors_connected; 
-  float maxspeed = 5;
   PVector velocity;
   PVector acceleration;
-  float minSize = 7;
-  float maxSize = 75;
+  ArrayList<Anchor> anchors_connected; 
   color anchor_c;
-  int self_freq = (int)random(2,20);
-  float depth;
-  
-  
+  float size = 0;
+  float atract_r = 0;
+  float repulsion_r = 0;
+  float maxspeed = 5;
+  float minSize = 7;
+  float maxSize = 80;
+  int self_freq = 0;
   
   Anchor(float x, float y){
     position = new PVector(x, y);
     anchors_connected = new ArrayList<Anchor>();
     acceleration = new PVector(0, 0);
     velocity = new PVector(0, 0);
-    size = 0;
-    atract_r =0;
-    repulsion_r = 0;
-    depth = random(-500,500);
+    self_freq  = (int)random(2,20);
   }
   
   void run(ArrayList<Anchor> anchors){
     update_size();
-    update_color();
     check_connected(anchors);
-    PVector atraction_force = apply_atraction();
-    applyForce(atraction_force);
-    PVector repulsion_force = apply_repulsion();
-    applyForce(repulsion_force);
-    PVector borders_force = borders();
-    applyForce(borders_force);
+    applyForce(apply_atraction());
+    applyForce(apply_repulsion());
+    applyForce(borders());
     update();
     render();
   }
   
   void render(){
-    //stroke(255,59,148, 200);
-    strokeWeight(3);
-    stroke(255,59,map(size,minSize,maxSize,0,255));
+    //original color for the lines 255,59,148
+    
+    //strokeWeight(map(maxspeed,2,10,1,3));
+    //stroke(255,59,map(size,minSize,maxSize,0,255));
 
-    
-    
-    
-    //translate(0,0,-100);
-    for (Anchor a : anchors_connected) {
-      line(a.position.x, a.position.y,a.depth, position.x, position.y, depth);
-
-    }
-    //translate(0,0,100);
-    
-    noStroke();
-    /*for(int i = 0; i < 100; i = i+2){
-      fill(anchor_c, 255-2*i);
-      circle(position.x, position.y, size+i/4);
-    }*/
-    
-    fill(anchor_c);
-    //circle(position.x, position.y, size);
     pushMatrix();
-      noStroke();
-      translate(position.x, position.y, depth);
-      sphere(size);
+    translate(0,0,-1);
+    for (Anchor a : anchors_connected) {
+      stroke(255,59,map(dist(position.x, position.y, a.position.x, a.position.y), minSize*5, maxSize*5, 0, 255));
+      line(a.position.x, a.position.y, position.x, position.y);
+    }
     popMatrix();
     
-    //stroke(0);
-    //noFill();
-    //circle(position.x, position.y, atract_r*2);
-    //circle(position.x, position.y, repulsion_r*2);
-    
+    noStroke();
+    fill(anchor_c,155);
+    if(anchor_flag){
+      update_color();
+      circle(position.x, position.y, size);
+    }
   }
   
   void check_connected(ArrayList<Anchor> anchors){
@@ -196,18 +153,16 @@ class Anchor{
       velocity.mult(0.99);
     }
   }
-  
-  
+   
   void applyForce(PVector force) {
-    acceleration.add(force.div(2+(size/2)));
+    acceleration.add(force.div((size/2)));
   }
 
   
   PVector apply_atraction(){
-    int count = 0;
     PVector desired;
     PVector atraction_force = new PVector(0,0);
-    float d =0;
+    float d = 0;
 
     for (Anchor a : anchors_connected){
       d = PVector.dist(position, a.position);
@@ -215,22 +170,14 @@ class Anchor{
         desired = PVector.sub(a.position, position); 
         desired.normalize();
         desired.mult(maxspeed);
-        desired.div(d/1.5);
+        desired.div(d);
         atraction_force.add(desired);
-        count++;
       }
-    }
-    
-    if(count>0){
-      //atraction_force.div(count);
-    }else{
-      return new PVector(0,0);
     }
      return atraction_force;
   }
   
    PVector apply_repulsion(){
-    int count = 0;
     PVector desired;
     PVector repulsiton_force = new PVector(0,0);
     float d = 0;
@@ -243,15 +190,8 @@ class Anchor{
         desired.div(d/2);
         repulsiton_force.add(desired);
       }
-      count++;
-    }
-    if(count>0){
-      //repulsiton_force.div(count);
-    }else{
-      return new PVector(0,0);
     }
      return repulsiton_force;
-    
    }
    
    void update_size(){
@@ -275,8 +215,10 @@ class Anchor{
   PVector borders() {
     PVector desired = new PVector(0,0);
     PVector borders_force = new PVector(0,0);
-    float d = 0.5;
+    float d = 0.1;
     int r = 40;
+    
+    
     if (position.x < r){
       desired = PVector.sub(position, new PVector(0, position.y)); 
       d = PVector.dist(position, new PVector(0, position.y));
@@ -287,8 +229,9 @@ class Anchor{
     }
     desired.normalize();
     desired.mult(maxspeed*4);
-    desired.div(d*2);
+    desired.div(d/2);
     borders_force.add(desired);
+    
     if (position.y < r){ 
       desired = PVector.sub(position, new PVector(position.x, 0)); 
       d = PVector.dist(position, new PVector(position.x, 0));
@@ -300,8 +243,9 @@ class Anchor{
     desired.normalize();
     desired.mult(maxspeed*2);
     desired.div(d/2);
-
     borders_force.add(desired);
+    
+    
     return borders_force;
   }
    
