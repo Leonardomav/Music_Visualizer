@@ -21,7 +21,7 @@ void setup() {
     anchorlist.add_anchor(new Anchor(random(0,width),random(0,height)));
     
   minim = new Minim(this);
-  player = minim.loadFile("../music_examples/music1.mp3", 1024);
+  player = minim.loadFile("../music_examples/music6.mp3", 1024);
   fft = new FFT( player.bufferSize(), player.sampleRate() );
   fft.linAverages( 30 );
   player.play();
@@ -108,7 +108,7 @@ class Anchor{
   void render(){
     //original color for the lines 255,59,148
     
-    //strokeWeight(map(maxspeed,2,10,1,3));
+    strokeWeight(map(maxspeed,2,10,1,3));
     //stroke(255,59,map(size,minSize,maxSize,0,255));
 
     pushMatrix();
@@ -170,14 +170,14 @@ class Anchor{
         desired = PVector.sub(a.position, position); 
         desired.normalize();
         desired.mult(maxspeed);
-        desired.div(d);
+        desired.div(d/1.5);
         atraction_force.add(desired);
       }
     }
      return atraction_force;
   }
   
-   PVector apply_repulsion(){
+  PVector apply_repulsion(){
     PVector desired;
     PVector repulsiton_force = new PVector(0,0);
     float d = 0;
@@ -197,10 +197,10 @@ class Anchor{
    void update_size(){
      float freqLevel = exp(fft.getAvg(self_freq)*sensibility);
      float oldSize=size;
-     float newSize = (oldSize*9 + constrain(freqLevel, minSize, maxSize)) / 10;
-     size = newSize;
-     float leftLevel = norm(player.mix.level()*100, 0, 10);
-     leftLevel = constrain(leftLevel, 1, 5);
+     size = (oldSize*9 + constrain(freqLevel, minSize, maxSize)) / 10;
+     
+     float leftLevel = norm(player.mix.level()*(100+sensibility*10), 0, 10);
+     leftLevel = constrain(leftLevel, 1, 5);   
      atract_r = size * 5;
      repulsion_r = size * leftLevel;
      maxspeed = leftLevel*2;
@@ -241,7 +241,7 @@ class Anchor{
       d = PVector.dist(position, new PVector(position.x, height));
     }
     desired.normalize();
-    desired.mult(maxspeed*2);
+    desired.mult(maxspeed*4);
     desired.div(d/2);
     borders_force.add(desired);
     
