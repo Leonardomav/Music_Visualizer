@@ -1,2 +1,2 @@
-# music_visualizer
-Simple project for Generative Design Course
+# Music Visualizer
+Simple music visualizer using boids as inspiration
